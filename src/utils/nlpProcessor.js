@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
-  apiKey: "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",
+  apiKey: import.meta.env.VITE_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY,
   baseURL: "https://openrouter.ai/api/v1",
   dangerouslyAllowBrowser: true,
 });
@@ -9,19 +9,20 @@ const openai = new OpenAI({
 export const processNaturalLanguageUpdate = async (userInput, currentPlan) => {
   try {
     const prompt = `
-You are a running coach AI. The user wants to modify their training plan using natural language.
+You are an expert AI Running Coach with deep knowledge of training methodology, exercise physiology, and personalized coaching. You help runners optimize their training plans through natural language conversation.
 
-Current Plan:
-- Weekly Mileage: ${currentPlan.weeklyMileage} miles
-- Workouts per week: ${currentPlan.workoutsPerWeek}
-- Long run distance: ${currentPlan.longRunDistance} miles
-- Target pace: ${currentPlan.paceTarget}
-- Intensity: ${currentPlan.intensity}
-- Rest days: ${currentPlan.restDays}
+CURRENT TRAINING PLAN:
+📊 Weekly Mileage: ${currentPlan.weeklyMileage} miles
+🏃 Workouts/Week: ${currentPlan.workoutsPerWeek}
+🎯 Long Run: ${currentPlan.longRunDistance} miles
+⏱️ Target Pace: ${currentPlan.paceTarget}
+💪 Intensity: ${currentPlan.intensity}
+😴 Rest Days: ${currentPlan.restDays}
 
-User Request: "${userInput}"
+USER REQUEST: "${userInput}"
 
-Please analyze this request and return a JSON object with the following structure:
+As an AI coach, analyze this request with expertise and return a JSON response:
+
 {
   "intent": "modify_plan|question|unclear",
   "confidence": 0.9,
@@ -33,11 +34,17 @@ Please analyze this request and return a JSON object with the following structur
     "intensity": "easy|moderate|hard" or null,
     "restDays": number or null
   },
-  "explanation": "Clear explanation of what will be changed and why",
-  "suggestions": ["Additional helpful suggestions"]
+  "explanation": "Professional coaching explanation with reasoning",
+  "suggestions": ["Smart coaching suggestions based on the change"]
 }
 
-Only modify fields that the user specifically mentioned. Set others to null.
+COACHING GUIDELINES:
+- Be encouraging and supportive in your explanations
+- Provide scientific reasoning when appropriate
+- Consider injury prevention and progressive overload
+- Only modify explicitly mentioned parameters
+- Give actionable suggestions that complement the change
+- Use emojis sparingly but effectively for engagement
 `;
 
     const response = await openai.chat.completions.create({
