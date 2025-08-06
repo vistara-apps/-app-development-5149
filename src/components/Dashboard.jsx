@@ -7,20 +7,31 @@ import { generateContextualRecommendations } from '../utils/nlpProcessor';
 import WeeklySchedule from './WeeklySchedule';
 import ProgressChart from './ProgressChart';
 import SubscriptionPaywall from './SubscriptionPaywall';
+import { StatCardSkeleton, RecommendationsSkeleton, LoadingSpinner } from './LoadingStates';
+import { ToastContainer, useToast } from './ToastNotification';
 
 const Dashboard = () => {
   const { currentPlan } = usePlan();
   const { user } = useUser();
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [isPaid, setIsPaid] = useState(() => {
     return localStorage.getItem('runcoach_subscription') === 'active';
   });
+  const { toasts, removeToast, showSuccess, showError } = useToast();
 
   useEffect(() => {
+    // Simulate initial loading
+    const timer = setTimeout(() => {
+      setInitialLoading(false);
+    }, 1000);
+
     if (isPaid && currentPlan && user) {
       generateRecommendations();
     }
+
+    return () => clearTimeout(timer);
   }, [currentPlan, user, isPaid]);
 
   const generateRecommendations = async () => {
@@ -33,8 +44,10 @@ const Dashboard = () => {
       };
       const recs = await generateContextualRecommendations(user, currentPlan, contextData);
       setRecommendations(recs);
+      showSuccess('Recommendations updated successfully!');
     } catch (error) {
       console.error('Failed to generate recommendations:', error);
+      showError('Failed to generate recommendations. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -60,44 +73,72 @@ const Dashboard = () => {
 
   const stats = [
     {
-      icon: <Target size={20} />,
+      icon: <Target size={24} />,
       label: 'Weekly Mileage',
-      value: `${currentPlan.weeklyMileage} mi`,
-      color: '#667eea'
+      value: currentPlan.weeklyMileage,
+      unit: 'miles',
+      color: '#667eea',
+      trend: '+2.5',
+      trendDirection: 'up'
     },
     {
-      icon: <Calendar size={20} />,
+      icon: <Calendar size={24} />,
       label: 'Workouts/Week',
       value: currentPlan.workoutsPerWeek,
-      color: '#764ba2'
+      unit: 'sessions',
+      color: '#764ba2',
+      trend: 'On track',
+      trendDirection: 'neutral'
     },
     {
-      icon: <Clock size={20} />,
+      icon: <Clock size={24} />,
       label: 'Target Pace',
       value: currentPlan.paceTarget,
-      color: '#f093fb'
+      unit: 'min/mi',
+      color: '#f093fb',
+      trend: '-0:15',
+      trendDirection: 'up'
     },
     {
-      icon: <TrendingUp size={20} />,
+      icon: <TrendingUp size={24} />,
       label: 'Long Run',
-      value: `${currentPlan.longRunDistance} mi`,
-      color: '#f5576c'
+      value: currentPlan.longRunDistance,
+      unit: 'miles',
+      color: '#f5576c',
+      trend: '+1.0',
+      trendDirection: 'up'
     }
   ];
 
   return (
     <div className="container">
       {/* Stats Overview */}
-      <div className="grid grid-3">
-        {stats.map((stat, index) => (
-          <div key={index} className="card stat-card">
-            <div className="stat-value" style={{ color: stat.color }}>
-              {stat.icon}
-              {stat.value}
+      <div className="grid grid-4">
+        {initialLoading ? (
+          [...Array(4)].map((_, index) => (
+            <StatCardSkeleton key={index} />
+          ))
+        ) : (
+          stats.map((stat, index) => (
+            <div key={index} className="card stat-card enhanced">
+              <div className="stat-header">
+                <div className="stat-icon" style={{ color: stat.color }}>
+                  {stat.icon}
+                </div>
+                <div className={`stat-trend ${stat.trendDirection}`}>
+                  {stat.trend}
+                </div>
+              </div>
+              <div className="stat-main">
+                <div className="stat-value" style={{ color: stat.color }}>
+                  {stat.value}
+                </div>
+                <div className="stat-unit">{stat.unit}</div>
+              </div>
+              <div className="stat-label">{stat.label}</div>
             </div>
-            <div className="stat-label">{stat.label}</div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       <div className="grid grid-2">
@@ -116,7 +157,7 @@ const Dashboard = () => {
         <div className="card">
           <h3>AI Recommendations</h3>
           {loading ? (
-            <div className="loading"></div>
+            <RecommendationsSkeleton />
           ) : recommendations.length > 0 ? (
             <div>
               {recommendations.map((rec, index) => (
@@ -132,8 +173,9 @@ const Dashboard = () => {
                 onClick={generateRecommendations} 
                 className="btn btn-secondary"
                 style={{ marginTop: '1rem', width: '100%' }}
+                disabled={loading}
               >
-                Refresh Recommendations
+                {loading ? <LoadingSpinner size="small" /> : 'Refresh Recommendations'}
               </button>
             </div>
           ) : (
@@ -142,8 +184,9 @@ const Dashboard = () => {
               <button 
                 onClick={generateRecommendations} 
                 className="btn btn-primary"
+                disabled={loading}
               >
-                Generate Recommendations
+                {loading ? <LoadingSpinner size="small" /> : 'Generate Recommendations'}
               </button>
             </div>
           )}
@@ -155,6 +198,9 @@ const Dashboard = () => {
         <h3>Progress Overview</h3>
         <ProgressChart plan={currentPlan} />
       </div>
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 };
